@@ -5,6 +5,7 @@
 #include <OneButton.h>
 #include "DHTesp.h"
 #include <EEPROM.h>
+#include "displayoutput.h"
 
 
 #define NOT_PRESSED HIGH
@@ -28,7 +29,7 @@ OneButton btnmenu = OneButton(PIN_BUTTONMENU,true,true);
 enum MenuItem{
   NONE, MAIN, STATS, CONFIG
 };
-enum ConfigPage{
+enum ConfigMenuItem{
   OFFTIMER, MAINVIEW, STATSVIEW, BACK
 };
 
@@ -36,8 +37,8 @@ enum ConfigPage{
 //  CURRENT CONFIGURATION
 //=========================================================================
 MenuItem currentL0 = MAIN;
-ConfigPage currentL1 = OFFTIMER;
-ConfigPage presentConfig = BACK;
+ConfigMenuItem currentL1 = OFFTIMER;
+ConfigMenuItem presentConfig = BACK;
 bool userCurrentlyConfiguresPreferences = false;
 
 //offtimer in milliseconds
@@ -46,6 +47,7 @@ int l2_offtimer [1] = {12000};
 int l2_mainviewitems [2];// = {0,1};
 //statusviewitems: 0:Status, 1:Timer, 2:Countdown, 3:Voltage, 4:Temp
 int l2_statusviewitems [4];// = {0,2,3,4};
+
 
 unsigned long powerTimestamp;
 unsigned long programTimestamp;
@@ -131,11 +133,6 @@ void saveConfig() {
 }
 
 
-
-
-
-
-
 static void powerOnIH(){
   digitalWrite(PIN_MOSFET, HIGH);
   main_power = 1;
@@ -151,107 +148,36 @@ static void powerOffIH(){
   display.display();
 }
 
-static void drawChangeTimerApp(){
-  int ofx = 15;
-  int off_timer = l2_offtimer[0]/1000;
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(ofx,5);
-  display.println("Auto-Off Timer:");
-  display.setTextSize(2);
-  display.setCursor(40,20);
-  display.println(String(off_timer) + "s");
-  display.setTextSize(1);
-  display.setCursor(ofx,47);
-  display.print("Menu:  ");
-  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
-  display.print("+1s");
-  display.setTextColor(SSD1306_WHITE);
-  display.print("  ");
-  display.write(16); //Long Press Sign
-  display.println("Back");
-  display.setCursor(ofx,56);
-  display.print("Power: ");
-  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
-  display.print("-1s");
-  display.drawLine(0, 46, display.width()-1, 46, SSD1306_WHITE);
-  display.display();
-}
 
-static void drawMenuL1(){
-  int ofx = 15;
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(ofx,20);
-  String current_item = "";
+void switchedMenuL1(){
   switch (currentL1)
   {
   case OFFTIMER:
-      current_item = "Auto-Off Timer";
-      break;
-    case MAINVIEW:
-      current_item = "Main View Setup";
-      break;
-    case STATSVIEW:
-      current_item = "Stats View Setup";
-      break;
-    case BACK:
-      current_item = "Exit Menu";
-      break;
+    drawMenuL1(&display,"Auto-Off Timer");
+    break;
+  case MAINVIEW:
+    drawMenuL1(&display,"Main View Setup");
+    break;
+  case STATSVIEW:
+    drawMenuL1(&display,"Stats View Setup");
+    break;
+  case BACK:
+    drawMenuL1(&display,"Back");
+    break;
   }
-  display.println(current_item);
-  display.setTextSize(1);
-  display.setCursor(ofx,47);
-  display.print("Menu:  ");
-  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
-  display.write(16);
-  display.setTextColor(SSD1306_WHITE);
-  display.print("  ");
-  display.write(16); //Long Press Sign
-  display.println("Select");
-  display.setCursor(ofx,56);
-  display.print("Power: ");
-  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
-  display.write(17);
-  display.drawLine(0, 46, display.width()-1, 46, SSD1306_WHITE);
-  display.display();
 }
 
-static void drawMainView(){
-  int ofx = 15;
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(ofx,30);
-  String current_item = "";
-  display.print("MAINVIEW");
-  display.display();
-}
-
-static void drawStatsView(){
-  int ofx = 15;
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(ofx,30);
-  display.print("STATS STATS STATS");
-  display.display();
-}
-
-
-static void drawMenuL0(){
+static void switchedMenuL0(){
   switch (currentL0)
   {
   case MAIN:
-    drawMainView();
+    drawMainView(&display);
     break;
   case STATS:
-    drawStatsView();
+    drawStatsView(&display);
     break;
   case CONFIG:
-    drawMenuL1();
+    switchedMenuL1();
     break;
   case NONE:
     display.clearDisplay();
@@ -260,14 +186,17 @@ static void drawMenuL0(){
   }  
 }
 
+
+
+
 static void offtimerbuttonup(){
   l2_offtimer[0]+=1000;
-  drawChangeTimerApp();
+  drawChangeTimerApp(&display, l2_offtimer[0]);
 }
 
 static void offtimerbuttondown(){
   l2_offtimer[0]-=1000;
-  drawChangeTimerApp();
+  drawChangeTimerApp(&display, l2_offtimer[0]);
 }
 
 
@@ -302,7 +231,8 @@ static void handleMainClick() {
 static void handleMenuLongPress() {
   if (currentL0!=CONFIG){
     currentL0 = CONFIG;
-    drawMenuL1();
+    currentL1 = OFFTIMER;
+    switchedMenuL1();
   }
   else{
     if (userCurrentlyConfiguresPreferences==false){
@@ -310,7 +240,7 @@ static void handleMenuLongPress() {
       switch (currentL1)
       {
       case OFFTIMER:
-        drawChangeTimerApp();
+        drawChangeTimerApp(&display, l2_offtimer[0]);
         break;
       case MAINVIEW:
         Serial.println("currentlyConfigures MAINVIEW");
@@ -325,14 +255,14 @@ static void handleMenuLongPress() {
         userCurrentlyConfiguresPreferences = false;
         currentL1 = OFFTIMER;
         currentL0 = MAIN;
-        drawMenuL0();
+        switchedMenuL0();
         break;
       }
     }
     else{//userCurrentlyConfiguresPreferences 
       Serial.println("Exiting Configure Menu");
       userCurrentlyConfiguresPreferences = false;
-      drawMenuL1();
+      switchedMenuL1();
     }
   }
   
@@ -346,17 +276,17 @@ static void handleMenuClick() {
     case MAIN:
       currentL0 = STATS;
       Serial.println("L0:STATS");
-      drawMenuL0();
+      switchedMenuL0();
       break;
     case STATS:
       currentL0 = NONE;
       Serial.println("L0:NONE");
-      drawMenuL0();
+      switchedMenuL0();
       break;
     case NONE: 
       currentL0 = MAIN;
       Serial.println("L0:MAIN");
-      drawMenuL0();
+      switchedMenuL0();
       break;
     case CONFIG:
       Serial.println("L0:CONFIG");
@@ -379,7 +309,7 @@ static void handleMenuClick() {
         Serial.println("L1:OFFTIMER");
         break;
       }
-      drawMenuL1();
+      switchedMenuL1();
     }
   }
   else{
@@ -421,8 +351,10 @@ void setup() {
   btnmenu.attachClick(handleMenuClick);
   btnmenu.attachLongPressStart(handleMenuLongPress);
 
-  //MOSFET
+  //MOSFET init
   pinMode(PIN_MOSFET, OUTPUT);
+  //MOSFET configute because otherwise pin is floating when powering on the IH
+  digitalWrite(PIN_MOSFET, LOW); 
 
   //Screen
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // I2C Address 0x3C for 128x32
