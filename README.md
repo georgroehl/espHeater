@@ -1,6 +1,6 @@
 # espHeater
 
-![](https://img.shields.io/badge/++-informational?style=flat&logo=C&logoColor=white&color=informational) Code located in [src](src)
+![](https://img.shields.io/badge/++-informational?style=flat&logo=C&logoColor=white&color=informational) [main.cpp](src/main.cpp)
 
 ## To-Do:
 
