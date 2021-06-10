@@ -19,6 +19,8 @@
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+bool displayOn30fps = false;
+
 
 //Buttons
 #define PIN_BUTTONMAIN D0
@@ -49,8 +51,9 @@ int l2_mainviewitems [2];// = {0,1};
 int l2_statusviewitems [4];// = {0,2,3,4};
 
 
-unsigned long powerTimestamp;
+unsigned long powerOnTimestamp;
 unsigned long programTimestamp;
+
 
 //=========================================================================
 //  ADDITIONAL VARIABLES
@@ -70,10 +73,6 @@ String last_stopwatch_duration = "0:00";
 int addresses [7];
 #define RESET_EEPROM false
 
-
-enum Widget{
-  MAIN_POWER, TIMER, BATTERY_VOLTAGE, BATTERY_PERCENTAGE, CASE_TEMP, POWER_STATUS, AUTO_OFF_MS, EMPTY, TEXT1, TEXT2
-};
 
 
 //===============================================================================
@@ -133,18 +132,20 @@ void saveConfig() {
 }
 
 
-static void powerOnIH(){
+static void turnOnMosfet(){
   digitalWrite(PIN_MOSFET, HIGH);
   main_power = 1;
-  powerTimestamp = millis();
-  display.invertDisplay(true);
+  powerOnTimestamp = millis();
+  displayOn30fps = true;
+  //display.invertDisplay(true);
   display.display();
 }
 
-static void powerOffIH(){
+static void turnOffMosfet(){
   digitalWrite(PIN_MOSFET, LOW);
   main_power = 0;
-  display.invertDisplay(false);
+  displayOn30fps = false;
+  //display.invertDisplay(false);
   display.display();
 }
 
@@ -167,14 +168,27 @@ void switchedMenuL1(){
   }
 }
 
+
+void updateStopWatchString(){
+  times = millis() - powerOnTimestamp;
+  millisec  = times % 100;
+  tseconds = times / 1000;
+  seconds = tseconds % 60;
+  last_stopwatch_duration = String(seconds) + ":" + String(millisec);
+  if (millisec<10){
+    last_stopwatch_duration = String(seconds) + ":0" + String(millisec);
+  }
+}
+
 static void switchedMenuL0(){
   switch (currentL0)
   {
   case MAIN:
-    drawMainView(&display);
+    drawMainView(&display, last_stopwatch_duration);
     break;
   case STATS:
-    drawStatsView(&display);
+    //because of Battery Voltage, directly turn on high refresh rate
+    displayOn30fps = true;
     break;
   case CONFIG:
     switchedMenuL1();
@@ -207,10 +221,10 @@ static void handleMainClick() {
     Serial.print("Main Power: ");
     Serial.println(main_power);
     if (main_power==1){
-      powerOffIH();
+      turnOffMosfet();
     }
     else if (main_power==0){
-      powerOnIH();
+      turnOnMosfet();
     }
   }
   else{ //userCurrentlyConfiguresPreferences==true
@@ -375,16 +389,65 @@ void setup() {
 //===============================================================================
 //  Main
 //===============================================================================
-char rxByte = 0;
 
-void loop() {
+void checkAutoOffTimer(){
   unsigned int auto_off_ms = l2_offtimer[0];
-  if ((millis()-powerTimestamp) >= auto_off_ms){
+  if ((millis()-powerOnTimestamp) >= auto_off_ms){
     if (main_power){
       //power is on for longer than variable auto_off_ms (default: 10s)
-      powerOffIH();
+      turnOffMosfet();
+      //set stopwatch duration to even number because timing can be off by some ms
+      last_stopwatch_duration = String(auto_off_ms/1000) + ":00";
     }
   }
+}
+
+void checkDisplayRefreshRate(){
+  if (displayOn30fps==true){
+    //todo: check for 30 fps calculation only then:
+    int progress = 0;
+    if (main_power){
+      updateStopWatchString();
+      
+      //calculate 0-100% progress of auto_off_timer
+      unsigned int auto_off_ms = l2_offtimer[0];
+      float fraction = 100/(float)auto_off_ms;
+      int elapsed = millis()-powerOnTimestamp;
+      progress = fraction*elapsed;
+
+      //if device was switched off by timer, set last_stopwatch_duration
+      if ((millis()-powerOnTimestamp) >= auto_off_ms){
+        last_stopwatch_duration = String(auto_off_ms/1000) + ":00";  
+      }
+    }
+    
+    //todo factor out following 3 lines:
+    int sensorValue = analogRead(PIN_BATTVOLTAGE);
+    float batteryVoltage = sensorValue * (3.2 / 1023.0)* 4;
+    String batteryString = String(batteryVoltage) + "V";
+
+    switch (currentL0)
+    {
+      case MAIN:
+        drawMainView(&display, last_stopwatch_duration);
+        break;
+      case STATS:
+        drawStatsView(&display, String(l2_offtimer[0]/1000)+"s", last_stopwatch_duration, batteryString);
+        break;
+      case CONFIG:
+        displayOn30fps=false;
+        break;
+      case NONE:
+        drawProgressView(&display, progress);
+        break;
+      }  
+
+  }
+}
+
+void loop() {
+  checkAutoOffTimer();
+  checkDisplayRefreshRate();
   btnmain.tick();
   btnmenu.tick();
 }
