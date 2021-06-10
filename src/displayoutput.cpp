@@ -29,9 +29,27 @@ void drawMainView(Adafruit_SSD1306 *display, String mainviewString){
   display->clearDisplay();
   display->setTextSize(3);
   display->setTextColor(SSD1306_WHITE);
-  display->setCursor(ofx,20);
+  display->setCursor(ofx,10);
   String line1 = createPrintableLine(6,"",mainviewString);
   display->print(line1);
+  display->display();
+}
+
+void drawMainView(Adafruit_SSD1306 *display, String mainviewString, String batteryValue, String tempString){
+  //Mainview is one line with 9 chars
+  int ofx = 0;
+  display->clearDisplay();
+  display->setTextSize(3);
+  display->setTextColor(SSD1306_WHITE);
+  display->setCursor(ofx,10);
+  String line1 = createPrintableLine(6,"",mainviewString);
+  display->print(line1);
+
+  display->setTextSize(1);
+  String line2 = createPrintableLine(14,tempString,batteryValue);
+  display->setCursor(26,45);
+  display->print(line2);
+
   display->display();
 }
 
@@ -49,23 +67,25 @@ void drawProgressView(Adafruit_SSD1306 *display, int progress){
 }
 
 
-void drawStatsView(Adafruit_SSD1306 *display, String timerValue, String stopwatchValue, String batteryValue){
+void drawStatsView(Adafruit_SSD1306 *display, String timerValue, String stopwatchValue, String batteryValue, String tempString){
   //circa 4 lines with 18-20 chars
+  String line0 = createPrintableLine(10,"",stopwatchValue);
+  String line1 = createPrintableLine(17,"Auto-Off:",timerValue);
+  String line2 = createPrintableLine(17,"Battery:",tempString);
+  String line3 = createPrintableLine(17,"Voltage:",batteryValue);
 
-  String line1 = createPrintableLine(18,"Auto-Shutdown:",timerValue);
-  String line2 = createPrintableLine(18,"Timer:",stopwatchValue);
-  String line3 = createPrintableLine(18,"Battery:",batteryValue);
-
-  int ofx = 13;
+  int ofx = 18;
   display->clearDisplay();
   display->setTextSize(1);
   display->setTextColor(SSD1306_WHITE);
-  display->setCursor(ofx,17);
-  
+
+  display->setCursor(ofx,5);
+  display->print(line0);
+  display->setCursor(ofx,20);
   display->print(line1);
-  display->setCursor(ofx,27);
+  display->setCursor(ofx,30);
   display->print(line2);
-  display->setCursor(ofx,37);
+  display->setCursor(ofx,40);
   display->print(line3);
 
   display->display();

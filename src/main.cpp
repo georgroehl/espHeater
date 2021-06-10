@@ -11,8 +11,11 @@
 #define NOT_PRESSED HIGH
 #define PRESSED LOW
 
+
+#define PIN_TEMP D7
 #define PIN_MOSFET D8
 #define PIN_BATTVOLTAGE A0
+
 
 
 //Screen
@@ -369,6 +372,9 @@ void setup() {
   //MOSFET configute because otherwise pin is floating when powering on the IH
   digitalWrite(PIN_MOSFET, LOW); 
 
+  //Temp Sensor Setup
+  dht.setup(PIN_TEMP, DHTesp::DHT22);
+
   //Screen
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // I2C Address 0x3C for 128x32
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
@@ -427,14 +433,17 @@ void checkDisplayRefreshRate(){
     float batteryVoltageRounded = static_cast<float>(static_cast<int>(batteryVoltage * 10.)) / 10.;
     String batteryString = String(batteryVoltageRounded) + "V";
 
+    int case_temp = round(dht.getTemperature());
+    String tempString = String(case_temp) + char(248) + "C";
+
     switch (currentL0)
     {
       case MAIN:
-        drawMainView(&display, last_stopwatch_duration);
+        drawMainView(&display, last_stopwatch_duration, batteryString, tempString);
         break;
       case STATS:
         displayOn30fps=true; //always on due to voltage
-        drawStatsView(&display, String(l2_offtimer[0]/1000)+"s", last_stopwatch_duration, batteryString);
+        drawStatsView(&display, String(l2_offtimer[0]/1000)+"s", last_stopwatch_duration, batteryString, tempString);
         break;
       case CONFIG:
         displayOn30fps=false;
