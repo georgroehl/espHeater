@@ -1,9 +1,10 @@
 # espHeater
 
-![](https://img.shields.io/badge/++-informational?style=flat&logo=C&logoColor=white&color=informational) [main.cpp](src/main.cpp)
+![](https://img.shields.io/badge/++-informational?style=flat&logo=C&logoColor=white&color=informational)
+
+Repository for Wemos D1 mini (ESP8266) powered Arduino Project. The programm switches the output based on the main button and turns off output after a predefined intervall. 
+
 
 ## To-Do:
 
-- main view:show timer when IH is on
-- stats view:show timer, voltage
 - refactor: drawing-class|menunavigation-class
