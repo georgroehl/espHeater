@@ -346,7 +346,6 @@ static void handleMenuClick() {
 //===============================================================================
 void setup() {
   Serial.begin(9600);
-  delay(2000);
   //Load Preferences from Flash
   EEPROM.begin(512);
   if ( RESET_EEPROM ) {
@@ -417,14 +416,16 @@ void checkDisplayRefreshRate(){
 
       //if device was switched off by timer, set last_stopwatch_duration
       if ((millis()-powerOnTimestamp) >= auto_off_ms){
-        last_stopwatch_duration = String(auto_off_ms/1000) + ":00";  
+        last_stopwatch_duration = String(auto_off_ms/1000) + ":00";
+        progress = 0; 
       }
     }
     
     //todo factor out following 3 lines:
     int sensorValue = analogRead(PIN_BATTVOLTAGE);
     float batteryVoltage = sensorValue * (3.2 / 1023.0)* 4;
-    String batteryString = String(batteryVoltage) + "V";
+    float batteryVoltageRounded = static_cast<float>(static_cast<int>(batteryVoltage * 10.)) / 10.;
+    String batteryString = String(batteryVoltageRounded) + "V";
 
     switch (currentL0)
     {
@@ -432,6 +433,7 @@ void checkDisplayRefreshRate(){
         drawMainView(&display, last_stopwatch_duration);
         break;
       case STATS:
+        displayOn30fps=true; //always on due to voltage
         drawStatsView(&display, String(l2_offtimer[0]/1000)+"s", last_stopwatch_duration, batteryString);
         break;
       case CONFIG:

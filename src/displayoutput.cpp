@@ -38,7 +38,6 @@ void drawMainView(Adafruit_SSD1306 *display, String mainviewString){
 void drawProgressView(Adafruit_SSD1306 *display, int progress){
   if (progress<0){return;}
   if (progress>100){return;}
-  if (progress==99){progress=100;}
   int start_offset = 10;
   if (progress==0){start_offset=0;}
   int16_t screenwidth = 127;
